@@ -1,0 +1,70 @@
+# GATK Best Practices variant calling workflow job.
+# 5 chained tasks: setup → mark_duplicates → bqsr → haplotype_caller → ingest_vcf
+#
+# GATK tools run via subprocess with --spark-runner LOCAL, which uses GATK's internal
+# Spark engine multi-threaded on the driver. For production scale, parallelize across
+# samples (run multiple BAMs concurrently on different cluster nodes).
+resources:
+  jobs:
+    gatk_workflow:
+      name: "gatk_variant_calling_workflow"
+
+      job_clusters:
+        - job_cluster_key: gatk_cluster
+          new_cluster:
+            spark_version: "16.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 4
+
+      # Parameters passed to every notebook task
+      # Use resource references so names resolve correctly in dev mode (with prefix)
+      parameters:
+        - name: catalog
+          default: ${resources.schemas.gatk_schema.catalog_name}
+        - name: schema
+          default: ${resources.schemas.gatk_schema.name}
+        - name: input_volume
+          default: ${resources.volumes.gatk_inputs.name}
+        - name: output_volume
+          default: ${resources.volumes.gatk_outputs.name}
+        - name: gatk_version
+          default: ${var.gatk_version}
+
+      tasks:
+        # Task 1: Download reference data, GATK binary, and sample BAM to volumes.
+        # Also cleans intermediate/output files for a fresh run.
+        - task_key: setup_reference_data
+          job_cluster_key: gatk_cluster
+          notebook_task:
+            notebook_path: ../notebooks/00_setup_reference_data.py
+
+        # Task 2: Mark duplicate reads in the input BAM
+        - task_key: mark_duplicates
+          depends_on:
+            - task_key: setup_reference_data
+          job_cluster_key: gatk_cluster
+          notebook_task:
+            notebook_path: ../notebooks/01_mark_duplicates.py
+
+        # Task 3: Base Quality Score Recalibration
+        - task_key: bqsr
+          depends_on:
+            - task_key: mark_duplicates
+          job_cluster_key: gatk_cluster
+          notebook_task:
+            notebook_path: ../notebooks/02_bqsr.py
+
+        # Task 4: Call variants and produce GVCF in the output volume
+        - task_key: haplotype_caller
+          depends_on:
+            - task_key: bqsr
+          job_cluster_key: gatk_cluster
+          notebook_task:
+            notebook_path: ../notebooks/03_haplotype_caller.py
+
+        # Task 5: Trigger the DLT pipeline to ingest VCF into Delta tables
+        - task_key: ingest_vcf
+          depends_on:
+            - task_key: haplotype_caller
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.vcf_ingestion_pipeline.id}

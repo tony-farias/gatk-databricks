@@ -1,0 +1,25 @@
+# Databricks Asset Bundle for the GATK Best Practices variant calling workflow.
+# Runs GATK Spark tools on Databricks, then ingests VCFs into Delta via DLT.
+bundle:
+  name: gatk_spark
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://e2-demo-field-eng.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+  prod:
+    mode: production
+    workspace:
+      host: https://e2-demo-field-eng.cloud.databricks.com
+      root_path: /Workspace/Users/zach.hanf@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: zach.hanf@databricks.com
+        level: CAN_MANAGE

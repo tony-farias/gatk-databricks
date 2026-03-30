@@ -1,0 +1,37 @@
+# Unity Catalog schema and volumes for the GATK variant calling workflow.
+# The schema holds Delta tables produced by the DLT pipeline.
+# Two volumes separate raw inputs from pipeline outputs.
+resources:
+  schemas:
+    gatk_schema:
+      name: ${var.schema_name}
+      catalog_name: ${var.catalog_name}
+      grants:
+        - principal: zach.hanf@databricks.com
+          privileges:
+            - ALL_PRIVILEGES
+
+  volumes:
+    # Input volume: BAMs, reference genome FASTA, known-sites VCFs, BED intervals
+    gatk_inputs:
+      name: ${var.input_volume_name}
+      catalog_name: ${resources.schemas.gatk_schema.catalog_name}
+      schema_name: ${resources.schemas.gatk_schema.name}
+      volume_type: MANAGED
+      comment: "Input data for GATK: BAMs, reference genome, known sites, BED intervals"
+      grants:
+        - principal: zach.hanf@databricks.com
+          privileges:
+            - ALL_PRIVILEGES
+
+    # Output volume: VCF/GVCF files land here and are picked up by AutoLoader
+    gatk_outputs:
+      name: ${var.output_volume_name}
+      catalog_name: ${resources.schemas.gatk_schema.catalog_name}
+      schema_name: ${resources.schemas.gatk_schema.name}
+      volume_type: MANAGED
+      comment: "Output landing zone for GATK VCF/GVCF files, read by AutoLoader"
+      grants:
+        - principal: zach.hanf@databricks.com
+          privileges:
+            - ALL_PRIVILEGES

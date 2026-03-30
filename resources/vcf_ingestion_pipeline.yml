@@ -1,0 +1,31 @@
+# Declarative Pipeline that ingests GVCF files from the GATK output volume
+# into bronze and silver Delta tables via AutoLoader.
+resources:
+  pipelines:
+    vcf_ingestion_pipeline:
+      name: "vcf_ingestion_pipeline"
+      serverless: true
+      catalog: ${resources.schemas.gatk_schema.catalog_name}
+      schema: ${resources.schemas.gatk_schema.name}
+      libraries:
+        - notebook:
+            path: ../src/vcf_ingestion.py
+
+      # Capture the event log for debugging and monitoring
+      event_log:
+        name: vcf_ingestion_event_log
+        catalog: ${resources.schemas.gatk_schema.catalog_name}
+        schema: ${resources.schemas.gatk_schema.name}
+
+      notifications:
+        - email_recipients:
+            - zach.hanf@databricks.com
+          alerts:
+            - on-update-failure
+            - on-update-fatal-failure
+            - on-flow-failure
+
+      # Spark conf values read by the pipeline code via spark.conf.get()
+      configuration:
+        bundle.sourcePath: ${workspace.file_path}/src
+        output_volume_path: "/Volumes/${resources.schemas.gatk_schema.catalog_name}/${resources.schemas.gatk_schema.name}/${resources.volumes.gatk_outputs.name}"

@@ -1,0 +1,24 @@
+variables:
+  catalog_name:
+    description: "Unity Catalog catalog for GATK genomics resources"
+    default: zhanf_test
+
+  schema_name:
+    description: "Schema name for GATK genomics tables and volumes"
+    default: gatk_genomics
+
+  input_volume_name:
+    description: "Volume for input data: BAMs, reference genome, known sites"
+    default: gatk_inputs
+
+  output_volume_name:
+    description: "Volume for output data: VCF/GVCF landing zone"
+    default: gatk_outputs
+
+  gatk_version:
+    description: "GATK release version to download and use"
+    default: "4.6.1.0"
+
+  reference_genome:
+    description: "Reference genome build to use"
+    default: hg38
